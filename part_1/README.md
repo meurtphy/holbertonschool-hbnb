@@ -68,3 +68,45 @@
 * Thin rectangles on lifelines: Indicate when a participant is active or processing
 
 
+# HBnB General Lexicon
+
+## Core Concepts
+* Layered Architecture: An architectural pattern that organizes an application into distinct layers (Presentation, Business Logic, Persistence), each with specific responsibilities.
+* Facade Pattern: A design pattern that provides a simplified, unified interface to a set of interfaces in a subsystem, promoting loose coupling between layers.
+* UML (Unified Modeling Language): A standardized modeling language used to create diagrams representing the structure and behavior of software systems.
+* API (Application Programming Interface): A set of protocols and tools for building software applications, specifying how software components should interact.
+* CRUD Operations: Basic data operations (Create, Read, Update, Delete) performed on entities within the system.
+## Key Entities
+* User: Represents an application user, with attributes like first_name, last_name, email, and password.
+* Place: Represents a property or accommodation listing, with attributes like title, description, price, latitude, and longitude.
+* Review: Represents a user's review of a place, including a rating and comment.
+* Amenity: Represents a feature or service offered at a place, with attributes like name and description.
+* BaseModel: A base class providing common attributes (id, created_at, updated_at) and methods for all entities.
+## Layers
+* Presentation Layer: Handles user interaction, including services and API endpoints. Often interacts with the Business Logic Layer.
+* Business Logic Layer: Contains the core logic and models representing entities. Enforces business rules and interacts with the Persistence Layer.
+* Persistence Layer: Manages data storage and retrieval, interacting directly with the database.
+## Diagram Types
+* Package Diagram: A high-level diagram showing the organization of the application into packages (layers) and dependencies between them.
+* Class Diagram: A detailed diagram representing the structure of classes, their attributes, methods, and relationships (inheritance, association, composition).
+* Sequence Diagram: A diagram illustrating the interaction between objects over time, showing the sequence of messages exchanged during a specific use case or API call.
+## Common Attributes & Methods
+* id (UUID): A universally unique identifier for each entity.
+* created_at: Timestamp indicating when the entity was created.
+* updated_at: Timestamp indicating when the entity was last updated.
+* create(): Method to create a new entity.
+* update(): Method to update an existing entity.
+* delete(): Method to remove an entity.
+* list(): Method to retrieve a list of entities.
+## UML Symbols
+* '<<Interface>>' : Stereotype indicating an interface.
+* '+' : Indicates public visibility of attributes or methods.
+* '-->' : Association relationship between classes.
+* '--|>' : Inheritance relationship (generalization).
+* 'o--' : Composition relationship.
+## General Terms
+* Repository: A component in the Persistence Layer responsible for data access and management.
+* DTO (Data Transfer Object): An object used to transfer data between layers or components.
+* ORM (Object-Relational Mapping): A technique that maps objects to database tables, simplifying data access.
+* Endpoint: A specific URL in an API that handles a particular request.
+### This lexicon should help in understanding the terminology used throughout the HBnB Evolution project documentation and provide a clear reference point for developers and stakeholders.
