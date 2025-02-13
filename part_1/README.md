@@ -51,3 +51,20 @@
 * Multiplicity: Numbers or symbols near line ends (e.g., "1" and "*")
 
 
+# Diag sequence
+
+![alt text](<Capture d'écran 2025-02-13 104216-1.png>)
+
+## Lexicon
+### Participants
+* Boxes at the top: Represent actors, objects, or systems involved in the interaction
+### Lifelines
+* Vertical dashed lines: Extend from each participant, representing their existence over time
+### Messages
+* Horizontal arrows: Show communication between participants
+* Solid arrows: Synchronous messages (sender waits for response)
+* Dashed arrows: Asynchronous messages (sender doesn't wait)
+### Activations
+* Thin rectangles on lifelines: Indicate when a participant is active or processing
+
+
