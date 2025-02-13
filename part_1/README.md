@@ -25,3 +25,10 @@
 * PlaceRepository = Handles access to place data
 * ReviewRepository = Handles access to review data
 * AmenityRepository = Handles access to amenity data
+
+
+# Diagram class
+
+[hbnb_diag2_class.drawio.pdf](https://github.com/user-attachments/files/18780690/hbnb_diag2_class.drawio.pdf)
+
+
