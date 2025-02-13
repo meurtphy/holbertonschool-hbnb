@@ -29,6 +29,5 @@
 
 # Diagram class
 
-[hbnb_diag2_class.drawio.pdf](https://github.com/user-attachments/files/18780690/hbnb_diag2_class.drawio.pdf)
-
+![Capture d'écran 2025-02-13 095033](https://github.com/user-attachments/assets/033d9c3a-ecbb-4b64-9904-c5d5f7272077)
 
