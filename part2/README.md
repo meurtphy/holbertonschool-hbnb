@@ -66,6 +66,78 @@ The server will start, and you can access the API at `http://localhost:5000/api/
 - **Reviews**: Manage reviews for places.
 - **Amenities**: Manage amenities associated with places.
 
+## API Endpoints Details
+
+### User Management API
+The User Management API provides endpoints for managing user accounts in the system.
+
+#### Endpoints:
+1. **Create User** (POST `/api/v1/users/`)
+   - Creates a new user account
+   - Request body:
+     ```json
+     {
+       "first_name": "John",
+       "last_name": "Doe",
+       "email": "john.doe@example.com"
+     }
+     ```
+   - Status codes:
+     - 201: User created successfully
+     - 400: Email already registered or invalid input
+
+2. **Get All Users** (GET `/api/v1/users/`)
+   - Returns a list of all users
+   - Status code: 200
+
+3. **Get User by ID** (GET `/api/v1/users/<user_id>`)
+   - Returns details of a specific user
+   - Status codes:
+     - 200: Success
+     - 404: User not found
+
+4. **Update User** (PUT `/api/v1/users/<user_id>`)
+   - Updates user information
+   - Request body: Same as create user
+   - Status codes:
+     - 200: User updated successfully
+     - 404: User not found
+     - 400: Invalid input data
+
+### Amenity Management API
+The Amenity Management API provides endpoints for managing amenities that can be associated with places.
+
+#### Endpoints:
+1. **Create Amenity** (POST `/api/v1/amenities/`)
+   - Creates a new amenity
+   - Request body:
+     ```json
+     {
+       "name": "Wi-Fi"
+     }
+     ```
+   - Status codes:
+     - 201: Amenity created successfully
+     - 400: Invalid input data
+
+2. **Get All Amenities** (GET `/api/v1/amenities/`)
+   - Returns a list of all amenities
+   - Status code: 200
+
+3. **Get Amenity by ID** (GET `/api/v1/amenities/<amenity_id>`)
+   - Returns details of a specific amenity
+   - Status codes:
+     - 200: Success
+     - 404: Amenity not found
+
+4. **Update Amenity** (PUT `/api/v1/amenities/<amenity_id>`)
+   - Updates amenity information
+   - Request body: Same as create amenity
+   - Status codes:
+     - 200: Amenity updated successfully
+     - 404: Amenity not found
+     - 400: Invalid input data
+
 ## Business Logic
 The Business Logic layer is responsible for managing the core functionality of the application. It includes the following entities:
 
