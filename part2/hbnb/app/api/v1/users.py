@@ -14,7 +14,7 @@ user_model = api.model('User', {
 class UserList(Resource):
     @api.expect(user_model, validate=True)
     @api.response(201, 'User successfully created')
-    @api.response(400, 'Email already registered')
+    @api.response(409, 'Email already registered')
     @api.response(400, 'Invalid input data')
     def post(self):
         """Register a new user"""
