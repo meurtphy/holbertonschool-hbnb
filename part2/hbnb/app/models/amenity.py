@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+from app.models.amenity import Amenity
+
+def test_amenity_creation():
+    amenity = Amenity(name="Wi-Fi")
+    assert amenity.name == "Wi-Fi"
+    print("Amenity creation test passed!")
+
+test_amenity_creation()
+=======
 from .base_model import BaseModel
 
 class Amenity(BaseModel):
@@ -26,3 +36,4 @@ class Amenity(BaseModel):
         for key, value in data.items():
             setattr(self, key, value)
         self.validate()
+>>>>>>> origin/main

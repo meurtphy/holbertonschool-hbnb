@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+ben et adrien airone
+=======
 # 🏠 HBnB Application
 
 This is the HBnB (AirBnB clone) application, a RESTful API for managing users, places, reviews, and amenities.
@@ -107,3 +110,4 @@ The Business Logic layer contains the core entities of the HBnB application. The
 Each entity class inherits from the BaseModel class and implements its own validation logic and specific methods. The relationships between entities (e.g., User owning Places, Places having Reviews and Amenities) are represented through object references.
 
 This structure allows for easy manipulation of data and enforcement of business rules within the application.
+>>>>>>> origin/main

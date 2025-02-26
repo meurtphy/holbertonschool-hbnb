@@ -14,7 +14,11 @@ class Repository(ABC):
         pass
 
     @abstractmethod
+<<<<<<< HEAD
+    def update(self, obj_id, data):
+=======
     def update(self, obj):
+>>>>>>> origin/main
         pass
 
     @abstractmethod
@@ -39,9 +43,17 @@ class InMemoryRepository(Repository):
     def get_all(self):
         return list(self._storage.values())
 
+<<<<<<< HEAD
+    def update(self, obj_id, data):
+        obj = self.get(obj_id)
+        if obj:
+            for key, value in data.items():
+                setattr(obj, key, value)
+=======
     def update(self, obj):
         if obj.id in self._storage:
             self._storage[obj.id] = obj
+>>>>>>> origin/main
 
     def delete(self, obj_id):
         if obj_id in self._storage:
