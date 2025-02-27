@@ -2,19 +2,33 @@ from .base_model import BaseModel
 from .user import User
 
 class Place(BaseModel):
-    def __init__(self, title, description, price, latitude, longitude, owner):
+    def __init__(self, title, description, price, latitude, longitude, owner_id=None, owner=None):
         super().__init__()
         self.title = title
         self.description = description
         self.price = price
         self.latitude = latitude
         self.longitude = longitude
-        self.owner = owner
-        self.reviews = []  # List to store related reviews
-        self.amenities = []  # List to store related amenities
+        self._owner = None
+        self.owner_id = owner_id
+        if owner:
+            self._owner = owner
+            self.owner_id = owner.id
+        self.reviews = []
+        self.amenities = []
 
-        # Validate attributes
         self.validate_attributes()
+
+    @property
+    def owner(self):
+        return self._owner
+
+    @owner.setter
+    def owner(self, value):
+        if not isinstance(value, User):
+            raise ValueError("Owner must be an instance of User")
+        self._owner = value
+        self.owner_id = value.id
 
     def validate_attributes(self):
         if not isinstance(self.title, str) or not self.title:
@@ -27,8 +41,6 @@ class Place(BaseModel):
             raise ValueError("Latitude must be a number between -90 and 90")
         if not isinstance(self.longitude, (int, float)) or not (-180 <= self.longitude <= 180):
             raise ValueError("Longitude must be a number between -180 and 180")
-        if not isinstance(self.owner, User):
-            raise ValueError("Owner must be an instance of User")
 
     def add_review(self, review):
         """Add a review to the place."""

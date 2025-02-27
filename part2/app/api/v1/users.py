@@ -1,8 +1,7 @@
 from flask_restx import Namespace, Resource, fields
-from app.services.facade import HBnBFacade
+from app.api.v1 import facade  # Import the shared facade instance
 
 api = Namespace('users', description='User operations')
-facade = HBnBFacade()
 
 # Define the user model for input validation and documentation
 user_model = api.model('User', {

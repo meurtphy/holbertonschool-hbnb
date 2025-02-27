@@ -1,24 +1,47 @@
+import logging
+
 from app.persistence.repository import InMemoryRepository
 from app.models.user import User
 from app.models.amenity import Amenity
 from app.models.place import Place
 from app.models.review import Review
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 class HBnBFacade:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
-        self.user_repo = InMemoryRepository()
-        self.place_repo = InMemoryRepository()
-        self.amenity_repo = InMemoryRepository()
-        self.review_repo = InMemoryRepository()
+        if not self._initialized:
+            self.user_repo = InMemoryRepository()
+            self.place_repo = InMemoryRepository()
+            self.amenity_repo = InMemoryRepository()
+            self.review_repo = InMemoryRepository()
+            self._initialized = True
 
     def create_user(self, user_data):
+        logger.debug(f"Creating user with data: {user_data}")
         user = User(**user_data)
         user.validate()  # Appel de la méthode de validation
         self.user_repo.add(user)
+        logger.debug(f"User created with ID: {user.id}")
         return user
 
     def get_user(self, user_id):
-        return self.user_repo.get(user_id)
+        logger.debug(f"Looking for user with ID: {user_id}")
+        user = self.user_repo.get(user_id)
+        if user:
+            logger.debug(f"Found user: {user.first_name} {user.last_name}")
+        else:
+            logger.debug("User not found")
+        return user
 
     def get_user_by_email(self, email):
         return self.user_repo.get_by_attribute('email', email)
@@ -63,27 +86,42 @@ class HBnBFacade:
         return None
 
     def create_place(self, place_data):
-        if len(place_data['title']) > 100:
-            raise ValueError("Title must be 100 characters or less")
-        if place_data['price'] < 0:
-            raise ValueError("Price must be a non-negative number")
-        if not (-90 <= place_data['latitude'] <= 90):
-            raise ValueError("Latitude must be between -90 and 90")
-        if not (-180 <= place_data['longitude'] <= 180):
-            raise ValueError("Longitude must be between -180 and 180")
-        owner = self.get_user(place_data['owner_id'])
+        logger.debug(f"Attempting to create place with data: {place_data}")
+
+        # Extract owner_id and amenities from place_data
+        owner_id = place_data.pop('owner_id', None)
+        amenities_ids = place_data.pop('amenities', [])
+
+        if not owner_id:
+            raise ValueError("owner_id is required")
+
+        owner = self.user_repo.get(owner_id)
         if not owner:
-            raise ValueError("Owner not found")
-        place = Place(
-            title=place_data['title'],
-            description=place_data.get('description', ''),
-            price=place_data['price'],
-            latitude=place_data['latitude'],
-            longitude=place_data['longitude'],
-            owner=owner
-        )
-        self.place_repo.add(place)
-        return place
+            raise ValueError(f"User with id {owner_id} not found")
+
+        try:
+            # Create place with core data
+            place = Place(
+                **place_data,
+                owner=owner
+            )
+
+            # Add amenities after place creation
+            for amenity_id in amenities_ids:
+                amenity = self.amenity_repo.get(amenity_id)
+                if amenity:
+                    place.add_amenity(amenity)
+                else:
+                    logger.warning(f"Amenity {amenity_id} not found")
+
+            self.place_repo.add(place)
+            logger.debug(f"Place added to repository with owner {owner.id}")
+
+            return place
+
+        except Exception as e:
+            logger.error(f"Error creating place: {str(e)}")
+            raise ValueError(str(e))
 
     def get_place(self, place_id):
         return self.place_repo.get(place_id)
@@ -93,17 +131,54 @@ class HBnBFacade:
 
     def update_place(self, place_id, place_data):
         place = self.place_repo.get(place_id)
-        if place:
-            if 'title' in place_data and len(place_data['title']) > 100:
-                raise ValueError("Title must be 100 characters or less")
-            if 'price' in place_data and place_data['price'] < 0:
-                raise ValueError("Price must be a non-negative number")
-            if 'latitude' in place_data and not (-90 <= place_data['latitude'] <= 90):
-                raise ValueError("Latitude must be between -90 and 90")
-            if 'longitude' in place_data and not (-180 <= place_data['longitude'] <= 180):
-                raise ValueError("Longitude must be between -180 and 180")
-            self.place_repo.update(place_id, place_data)
-        return place
+        if not place:
+            return None
+
+        try:
+            # Validate core attributes if they're being updated
+            if 'title' in place_data:
+                if len(place_data['title']) > 100:
+                    raise ValueError("Title must be 100 characters or less")
+                place.title = place_data['title']
+
+            if 'description' in place_data:
+                place.description = place_data['description']
+
+            if 'price' in place_data:
+                if place_data['price'] < 0:
+                    raise ValueError("Price must be a non-negative number")
+                place.price = float(place_data['price'])
+
+            if 'latitude' in place_data:
+                if not (-90 <= place_data['latitude'] <= 90):
+                    raise ValueError("Latitude must be between -90 and 90")
+                place.latitude = float(place_data['latitude'])
+
+            if 'longitude' in place_data:
+                if not (-180 <= place_data['longitude'] <= 180):
+                    raise ValueError("Longitude must be between -180 and 180")
+                place.longitude = float(place_data['longitude'])
+
+            if 'owner_id' in place_data:
+                owner = self.user_repo.get(place_data['owner_id'])
+                if owner:
+                    place.owner = owner
+                else:
+                    raise ValueError(f"Owner with id {place_data['owner_id']} not found")
+
+            if 'amenities' in place_data:
+                place.amenities = []  # Reset amenities
+                for amenity_id in place_data['amenities']:
+                    amenity = self.amenity_repo.get(amenity_id)
+                    if amenity:
+                        place.add_amenity(amenity)
+
+            logger.debug(f"Successfully updated place {place_id}")
+            return place
+
+        except Exception as e:
+            logger.error(f"Error updating place: {str(e)}")
+            raise ValueError(str(e))
 
     def create_review(self, review_data):
         if not (1 <= review_data['rating'] <= 5):

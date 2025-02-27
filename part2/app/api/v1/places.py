@@ -1,9 +1,9 @@
+import logging
 from flask_restx import Namespace, Resource, fields
-from app.services.facade import HBnBFacade
+from app.api.v1 import facade  # Import the shared facade instance
 
+logger = logging.getLogger(__name__)
 api = Namespace('places', description='Place operations')
-facade = HBnBFacade()
-
 
 # Define the place model for input validation and documentation
 place_model = api.model('Place', {
@@ -13,6 +13,18 @@ place_model = api.model('Place', {
     'latitude': fields.Float(required=True, description='Latitude of the place'),
     'longitude': fields.Float(required=True, description='Longitude of the place'),
     'owner_id': fields.String(required=True, description='ID of the owner'),
+    'amenities': fields.List(fields.String, required=True, description="List of amenities ID's")
+})
+
+# Add a new model for place updates
+place_update_model = api.model('PlaceUpdate', {
+    'title': fields.String(description='Title of the place'),
+    'description': fields.String(description='Description of the place'),
+    'price': fields.Float(description='Price per night'),
+    'latitude': fields.Float(description='Latitude of the place'),
+    'longitude': fields.Float(description='Longitude of the place'),
+    'owner_id': fields.String(description='ID of the owner'),
+    'amenities': fields.List(fields.String, description="List of amenities ID's")
 })
 
 @api.route('/')
@@ -20,18 +32,14 @@ class PlaceList(Resource):
     @api.expect(place_model)
     @api.response(201, 'Place successfully created')
     @api.response(400, 'Invalid input data')
-    @api.response(404, 'Owner not found')
     def post(self):
         """Register a new place"""
         place_data = api.payload
 
-        # Vérification explicite de l'existence de l'utilisateur
-        owner = facade.get_user(place_data.get('owner_id'))
-        if not owner:
-            return {'error': 'Owner not found', 'owner_id': place_data.get('owner_id')}, 404
-
         try:
+            # Create place using the facade
             new_place = facade.create_place(place_data)
+
             return {
                 'id': new_place.id,
                 'title': new_place.title,
@@ -39,7 +47,8 @@ class PlaceList(Resource):
                 'price': new_place.price,
                 'latitude': new_place.latitude,
                 'longitude': new_place.longitude,
-                'owner_id': new_place.owner.id
+                'owner_id': new_place.owner.id,
+                'amenities': [amenity.id for amenity in new_place.amenities]
             }, 201
         except ValueError as e:
             return {'error': str(e)}, 400
@@ -48,10 +57,16 @@ class PlaceList(Resource):
     def get(self):
         """Retrieve a list of all places"""
         places = facade.get_all_places()
-        return [{'id': place.id,
-                'title': place.title,
-                'latitude': place.latitude,
-                'longitude': place.longitude} for place in places], 200
+        return [{
+            'id': place.id,
+            'title': place.title,
+            'description': place.description,
+            'price': place.price,
+            'latitude': place.latitude,
+            'longitude': place.longitude,
+            'owner_id': place.owner.id,
+            'amenities': [amenity.id for amenity in place.amenities]
+        } for place in places], 200
 
 @api.route('/<place_id>')
 class PlaceResource(Resource):
@@ -62,33 +77,37 @@ class PlaceResource(Resource):
         place = facade.get_place(place_id)
         if not place:
             return {'error': 'Place not found'}, 404
+
         return {
             'id': place.id,
             'title': place.title,
             'description': place.description,
+            'price': place.price,
             'latitude': place.latitude,
             'longitude': place.longitude,
-            'owner': {
-                'id': place.owner.id,
-                'first_name': place.owner.first_name,
-                'last_name': place.owner.last_name,
-                'email': place.owner.email
-            },
-            'amenities': [{'id': amenity.id, 'name': amenity.name} for amenity in place.amenities],
-            'reviews': [{'id': review.id, 'text': review.text, 'rating': review.rating, 'user_id': review.user.id} for review in place.reviews]
+            'owner_id': place.owner.id,
+            'amenities': [amenity.id for amenity in place.amenities]
         }, 200
 
-    @api.expect(place_model)
+    @api.expect(place_update_model)
     @api.response(200, 'Place updated successfully')
     @api.response(404, 'Place not found')
     @api.response(400, 'Invalid input data')
     def put(self, place_id):
         """Update a place's information"""
-        place_data = api.payload
         try:
-            updated_place = facade.update_place(place_id, place_data)
-            if not updated_place:
+            place = facade.get_place(place_id)
+            if not place:
                 return {'error': 'Place not found'}, 404
+
+            update_data = api.payload
+            logger.debug(f"Updating place {place_id} with data: {update_data}")
+
+            # Update the place
+            updated_place = facade.update_place(place_id, update_data)
+            if not updated_place:
+                return {'error': 'Failed to update place'}, 400
+
             return {
                 'id': updated_place.id,
                 'title': updated_place.title,
@@ -96,7 +115,13 @@ class PlaceResource(Resource):
                 'price': updated_place.price,
                 'latitude': updated_place.latitude,
                 'longitude': updated_place.longitude,
-                'owner_id': updated_place.owner.id
+                'owner_id': updated_place.owner.id,
+                'amenities': [amenity.id for amenity in updated_place.amenities]
             }, 200
+
         except ValueError as e:
+            logger.error(f"Validation error while updating place: {str(e)}")
             return {'error': str(e)}, 400
+        except Exception as e:
+            logger.error(f"Unexpected error while updating place: {str(e)}")
+            return {'error': 'Internal server error'}, 500
