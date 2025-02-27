@@ -53,8 +53,8 @@ class ReviewResource(Resource):
             'id': review.id,
             'text': review.text,
             'rating': review.rating,
-            'user_id': review.user_id,
-            'place_id': review.place_id
+            'user_id': review.user.id if review.user else None,
+            'place_id': review.place.id if review.place else None
         }, 200
 
     @api.expect(review_model)
@@ -71,8 +71,8 @@ class ReviewResource(Resource):
                 'id': updated_review.id,
                 'text': updated_review.text,
                 'rating': updated_review.rating,
-                'user_id': updated_review.user_id,
-                'place_id': updated_review.place_id
+                'user_id': updated_review.user.id if updated_review.user else None,
+                'place_id': updated_review.place.id if updated_review.place else None
             }, 200
         except ValueError as e:
             return {'error': str(e)}, 400
@@ -84,4 +84,3 @@ class ReviewResource(Resource):
         if facade.delete_review(review_id):
             return {'message': 'Review deleted successfully'}, 200
         return {'error': 'Review not found'}, 404
-
