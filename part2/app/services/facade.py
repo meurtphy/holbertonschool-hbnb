@@ -31,10 +31,7 @@ class HBnBFacade:
         """Update user with new data"""
         user = self.get_user(user_id)
         if user:
-            for key, value in user_data.items():
-                setattr(user, key, value)
-            user.validate()  # Appel de la méthode de validation
-            self.user_repo.update(user_id, user)
+            self.user_repo.update(user_id, user_data)
             return user
         return None
 

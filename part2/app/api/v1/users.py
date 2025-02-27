@@ -41,7 +41,7 @@ class UserList(Resource):
         except ValueError as e:
             return {'error': str(e)}, 400
 
-@api.route('/<int:id>')
+@api.route('/<id>')
 class UserResource(Resource):
     @api.response(200, 'User details retrieved successfully')
     @api.response(404, 'User not found')
