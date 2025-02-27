@@ -101,3 +101,14 @@ REPORT+="Failed tests: $((TOTAL_TESTS - PASSED_TESTS))\n"
 echo -e "$REPORT" > api_test_report.md
 
 echo "API Testing Complete. Report saved to api_test_report.md"
+
+# Additional User API Tests
+run_test "Create a user with invalid data (missing email)" "curl -s -X POST \"${BASE_URL}/users/\" -H \"Content-Type: application/json\" -d '{\"first_name\": \"Invalid\", \"last_name\": \"User\"}'" 400
+
+run_test "Create a user with invalid data (first name too long)" "curl -s -X POST \"${BASE_URL}/users/\" -H \"Content-Type: application/json\" -d '{\"first_name\": \"ThisFirstNameIsMuchTooLongAndShouldCauseAnError\", \"last_name\": \"User\", \"email\": \"invalid.user@example.com\"}'" 400
+
+run_test "Update a non-existent user" "curl -s -X PUT \"${BASE_URL}/users/non_existent_id\" -H \"Content-Type: application/json\" -d '{\"first_name\": \"John\", \"last_name\": \"Doe\", \"email\": \"john.doe@example.com\"}'" 404
+
+run_test "Update a user with invalid data (last name too long)" "curl -s -X PUT \"${BASE_URL}/users/$USER_ID\" -H \"Content-Type: application/json\" -d '{\"first_name\": \"John\", \"last_name\": \"ThisLastNameIsMuchTooLongAndShouldCauseAnError\", \"email\": \"john.doe@example.com\"}'" 400
+
+echo "Additional User API Tests Complete. Report updated in api_test_report.md"

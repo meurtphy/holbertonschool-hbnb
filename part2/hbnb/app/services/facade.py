@@ -13,9 +13,13 @@ class HBnBFacade:
 
     # User-related methods
     def create_user(self, user_data):
-        user = User(**user_data)
-        self.user_repo.add(user)
-        return user
+        try:
+            user = User(**user_data)
+            self.user_repo.add(user)
+            return user
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise e
 
     def get_user(self, user_id):
         return self.user_repo.get(user_id)
@@ -28,17 +32,25 @@ class HBnBFacade:
 
     def update_user(self, user_id, user_data):
         user = self.get_user(user_id)
-        if user:
+        if not user:
+            raise ValueError(f"User with id {user_id} not found")
+        try:
             user.update(user_data)
             self.user_repo.update(user)
             return user
-        return None
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise e
 
     # Amenity-related methods
     def create_amenity(self, amenity_data):
-        amenity = Amenity(**amenity_data)
-        self.amenity_repo.add(amenity)
-        return amenity
+        try:
+            amenity = Amenity(**amenity_data)
+            self.amenity_repo.add(amenity)
+            return amenity
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise e
 
     def get_amenity(self, amenity_id):
         return self.amenity_repo.get(amenity_id)
@@ -48,10 +60,18 @@ class HBnBFacade:
 
     def update_amenity(self, amenity_id, amenity_data):
         amenity = self.get_amenity(amenity_id)
+        print(f"Updating amenity {amenity_id}: {amenity}")  # Debug log
         if amenity:
-            amenity.update(amenity_data)
-            self.amenity_repo.update(amenity)
-            return amenity
+            try:
+                amenity.update(amenity_data)
+                self.amenity_repo.update(amenity)
+                print(f"Updated amenity: {amenity}")  # Debug log
+                return amenity
+            except ValueError as e:
+                print(f"Validation error: {str(e)}")  # Debug log
+                raise e
+        else:
+            print(f"Amenity {amenity_id} not found")  # Debug log
         return None
 
     # Place-related methods
@@ -66,17 +86,21 @@ class HBnBFacade:
             if amenity:
                 amenities.append(amenity.id)
 
-        place = Place(
-            title=place_data['title'],
-            description=place_data.get('description', ''),
-            price=place_data['price'],
-            latitude=place_data['latitude'],
-            longitude=place_data['longitude'],
-            owner=owner
-        )
-        place.amenities = amenities
-        self.place_repo.add(place)
-        return place
+        try:
+            place = Place(
+                title=place_data['title'],
+                description=place_data.get('description', ''),
+                price=place_data['price'],
+                latitude=place_data['latitude'],
+                longitude=place_data['longitude'],
+                owner=owner
+            )
+            place.amenities = amenities
+            self.place_repo.add(place)
+            return place
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise e
 
     def get_place(self, place_id):
         place = self.place_repo.get(place_id)
@@ -108,14 +132,14 @@ class HBnBFacade:
                         amenities.append(amenity.id)
                 place.amenities = amenities
 
-            place.update(place_data)
-            self.place_repo.update(place)
-            return place
+            try:
+                place.update(place_data)
+                self.place_repo.update(place)
+                return place
+            except ValueError as e:
+                print(f"Validation error: {str(e)}")
+                raise e
         return None
-
-    # Review-related methods
-    def create_review(self, review_data):
-        user = self.get_user(review_data['user_id'])
 
     # Review-related methods
     def create_review(self, review_data):
@@ -124,16 +148,20 @@ class HBnBFacade:
         if not user or not place:
             raise ValueError("User or Place not found")
         
-        review = Review(
-            text=review_data['text'],
-            rating=review_data['rating'],
-            user=user,
-            place=place
-        )
-        self.review_repo.add(review)
-        place.add_review(review)
-        self.place_repo.update(place)
-        return review
+        try:
+            review = Review(
+                text=review_data['text'],
+                rating=review_data['rating'],
+                user=user,
+                place=place
+            )
+            self.review_repo.add(review)
+            place.add_review(review)
+            self.place_repo.update(place)
+            return review
+        except ValueError as e:
+            print(f"Validation error: {str(e)}")
+            raise e
 
     def get_review(self, review_id):
         return self.review_repo.get(review_id)
@@ -150,9 +178,13 @@ class HBnBFacade:
     def update_review(self, review_id, review_data):
         review = self.get_review(review_id)
         if review:
-            review.update(review_data)
-            self.review_repo.update(review)
-            return review
+            try:
+                review.update(review_data)
+                self.review_repo.update(review)
+                return review
+            except ValueError as e:
+                print(f"Validation error: {str(e)}")
+                raise e
         return None
 
     def delete_review(self, review_id):

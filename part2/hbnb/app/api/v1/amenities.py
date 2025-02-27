@@ -46,10 +46,14 @@ class AmenityResource(Resource):
     def put(self, amenity_id):
         """Update an amenity's information"""
         amenity_data = api.payload
+        print(f"Updating amenity {amenity_id} with data: {amenity_data}")  # Debug log
         try:
             updated_amenity = facade.update_amenity(amenity_id, amenity_data)
             if not updated_amenity:
+                print(f"Amenity {amenity_id} not found")  # Debug log
                 return {'error': 'Amenity not found'}, 404
+            print(f"Amenity {amenity_id} updated successfully")  # Debug log
             return {'id': updated_amenity.id, 'name': updated_amenity.name}, 200
         except ValueError as e:
+            print(f"Validation error: {str(e)}")  # Debug log
             return {'error': str(e)}, 400

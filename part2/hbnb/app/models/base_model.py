@@ -13,10 +13,27 @@ class BaseModel:
 
     def update(self, data):
         """Update the attributes of the object based on the provided dictionary"""
-        for key, value in data.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
+        # Create a shallow copy of the current object's dictionary
+        temp_dict = self.__dict__.copy()
+        
+        # Update the temporary dictionary
+        temp_dict.update(data)
+        
+        # Create a temporary object with the updated data
+        temp_obj = type(self)(**temp_dict)
+        
+        # Validate the temporary object
+        temp_obj.validate()
+        
+        # If validation passes, update the actual object
+        self.__dict__.update(data)
+        
         self.save()  # Update the updated_at timestamp
+
+    def validate(self):
+        """Validate the object's attributes"""
+        # This method should be overridden by subclasses
+        pass
 
     def to_dict(self):
         """Convert the object to a dictionary"""

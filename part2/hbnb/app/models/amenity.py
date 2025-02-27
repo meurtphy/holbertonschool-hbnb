@@ -8,7 +8,7 @@ class Amenity(BaseModel):
 
     def validate(self):
         """Validate amenity attributes"""
-        if not self.name or not self.name.strip():
+        if not hasattr(self, 'name') or not self.name or not self.name.strip():
             raise ValueError("Name is required and cannot be empty")
         if len(self.name) > 50:
             raise ValueError("Name must be 50 characters or less")
@@ -21,8 +21,4 @@ class Amenity(BaseModel):
         })
         return amenity_dict
 
-    def update(self, data):
-        """Update amenity attributes"""
-        for key, value in data.items():
-            setattr(self, key, value)
-        self.validate()
+    # Remove the update method to use the one from BaseModel
