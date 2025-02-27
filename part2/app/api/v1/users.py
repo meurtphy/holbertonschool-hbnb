@@ -1,7 +1,8 @@
 from flask_restx import Namespace, Resource, fields
-from app.services import facade
+from app.services.facade import HBnBFacade
 
 api = Namespace('users', description='User operations')
+facade = HBnBFacade()
 
 # Define the user model for input validation and documentation
 user_model = api.model('User', {
@@ -34,16 +35,19 @@ class UserList(Resource):
         if existing_user:
             return {'error': 'Email already registered'}, 400
 
-        new_user = facade.create_user(user_data)
-        return {'id': new_user.id, 'first_name': new_user.first_name, 'last_name': new_user.last_name, 'email': new_user.email}, 201
+        try:
+            new_user = facade.create_user(user_data)
+            return {'id': new_user.id, 'first_name': new_user.first_name, 'last_name': new_user.last_name, 'email': new_user.email}, 201
+        except ValueError as e:
+            return {'error': str(e)}, 400
 
-@api.route('/<user_id>')
+@api.route('/<int:id>')
 class UserResource(Resource):
     @api.response(200, 'User details retrieved successfully')
     @api.response(404, 'User not found')
-    def get(self, user_id):
+    def get(self, id):
         """Get user details by ID"""
-        user = facade.get_user(user_id)
+        user = facade.get_user(id)
         if not user:
             return {'error': 'User not found'}, 404
         return {'id': user.id, 'first_name': user.first_name, 'last_name': user.last_name, 'email': user.email}, 200
@@ -52,26 +56,15 @@ class UserResource(Resource):
     @api.response(200, 'User successfully updated')
     @api.response(404, 'User not found')
     @api.response(400, 'Invalid input data')
-    def put(self, user_id):
+    def put(self, id):
         """Update user details"""
-        user = facade.get_user(user_id)
-        if not user:
-            return {'error': 'User not found'}, 404
-
-        update_data = api.payload
-
-        # Check if new email already exists for another user
-        if 'email' in update_data and update_data['email'] != user.email:
-            existing_user = facade.get_user_by_email(update_data['email'])
-            if existing_user and existing_user.id != user_id:
-                return {'error': 'Email already registered'}, 400
-
-        updated_user = facade.update_user(user_id, update_data)
-        return {
-            'id': updated_user.id,
-            'first_name': updated_user.first_name,
-            'last_name': updated_user.last_name,
-            'email': updated_user.email
-        }, 200
+        user_data = api.payload
+        try:
+            user = facade.update_user(id, user_data)
+            if not user:
+                return {'error': 'User not found'}, 404
+            return {'id': user.id, 'first_name': user.first_name, 'last_name': user.last_name, 'email': user.email}, 200
+        except ValueError as e:
+            return {'error': str(e)}, 400
 
 
