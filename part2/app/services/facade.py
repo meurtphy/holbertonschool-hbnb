@@ -35,6 +35,7 @@ class HBnBFacade:
             return user
         return None
 
+
     def create_amenity(self, amenity_data):
         """Create a new amenity"""
         if len(amenity_data['name']) > 50:
@@ -57,9 +58,7 @@ class HBnBFacade:
             raise ValueError("Amenity name must be 50 characters or less")
         amenity = self.get_amenity(amenity_id)
         if amenity:
-            for key, value in amenity_data.items():
-                setattr(amenity, key, value)
-            self.amenity_repo.update(amenity_id, amenity)
+            self.amenity_repo.update(amenity_id, amenity_data)
             return amenity
         return None
 
@@ -103,9 +102,7 @@ class HBnBFacade:
                 raise ValueError("Latitude must be between -90 and 90")
             if 'longitude' in place_data and not (-180 <= place_data['longitude'] <= 180):
                 raise ValueError("Longitude must be between -180 and 180")
-            for key, value in place_data.items():
-                setattr(place, key, value)
-            self.place_repo.update(place_id, place)
+            self.place_repo.update(place_id, place_data)
         return place
 
     def create_review(self, review_data):
@@ -143,9 +140,7 @@ class HBnBFacade:
         if review:
             if 'rating' in review_data and not (1 <= review_data['rating'] <= 5):
                 raise ValueError("Rating must be between 1 and 5")
-            for key, value in review_data.items():
-                setattr(review, key, value)
-            self.review_repo.update(review_id, review)
+            self.review_repo.update(review_id, review_data)
             return review
         return None
 
