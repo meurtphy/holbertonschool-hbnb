@@ -1,6 +1,6 @@
 import logging
 
-from app.persistence.repository import InMemoryRepository
+from app.persistence.repository import InMemoryRepository, SQLAlchemyRepository
 from app.models.user import User
 from app.models.amenity import Amenity
 from app.models.place import Place
@@ -20,23 +20,23 @@ class HBnBFacade:
 
     def __init__(self):
         if not self._initialized:
-            self.user_repo = InMemoryRepository()
-            self.place_repo = InMemoryRepository()
-            self.amenity_repo = InMemoryRepository()
-            self.review_repo = InMemoryRepository()
+            self.user_repository = SQLAlchemyRepository(User)  # Switched to SQLAlchemyRepository
+            self.place_repository = SQLAlchemyRepository(Place)
+            self.review_repository = SQLAlchemyRepository(Review)
+            self.amenity_repository = SQLAlchemyRepository(Amenity)
             self._initialized = True
 
     def create_user(self, user_data):
         logger.debug(f"Creating user with data: {user_data}")
         user = User(**user_data)
         user.validate()  # Appel de la méthode de validation
-        self.user_repo.add(user)
+        self.user_repository.add(user)
         logger.debug(f"User created with ID: {user.id}")
         return user
 
     def get_user(self, user_id):
         logger.debug(f"Looking for user with ID: {user_id}")
-        user = self.user_repo.get(user_id)
+        user = self.user_repository.get(user_id)
         if user:
             logger.debug(f"Found user: {user.first_name} {user.last_name}")
         else:
@@ -44,36 +44,35 @@ class HBnBFacade:
         return user
 
     def get_user_by_email(self, email):
-        return self.user_repo.get_by_attribute('email', email)
+        return self.user_repository.get_by_attribute('email', email)
 
     def get_all_users(self):
         """Retrieve all users from the repository"""
-        return self.user_repo.get_all()
+        return self.user_repository.get_all()
 
     def update_user(self, user_id, user_data):
         """Update user with new data"""
         user = self.get_user(user_id)
         if user:
-            self.user_repo.update(user_id, user_data)
+            self.user_repository.update(user_id, user_data)
             return user
         return None
-
 
     def create_amenity(self, amenity_data):
         """Create a new amenity"""
         if len(amenity_data['name']) > 50:
             raise ValueError("Amenity name must be 50 characters or less")
         amenity = Amenity(**amenity_data)
-        self.amenity_repo.add(amenity)
+        self.amenity_repository.add(amenity)
         return amenity
 
     def get_amenity(self, amenity_id):
         """Get an amenity by ID"""
-        return self.amenity_repo.get(amenity_id)
+        return self.amenity_repository.get(amenity_id)
 
     def get_all_amenities(self):
         """Get all amenities"""
-        return self.amenity_repo.get_all()
+        return self.amenity_repository.get_all()
 
     def update_amenity(self, amenity_id, amenity_data):
         """Update an amenity"""
@@ -81,7 +80,7 @@ class HBnBFacade:
             raise ValueError("Amenity name must be 50 characters or less")
         amenity = self.get_amenity(amenity_id)
         if amenity:
-            self.amenity_repo.update(amenity_id, amenity_data)
+            self.amenity_repository.update(amenity_id, amenity_data)
             return amenity
         return None
 
@@ -95,7 +94,7 @@ class HBnBFacade:
         if not owner_id:
             raise ValueError("owner_id is required")
 
-        owner = self.user_repo.get(owner_id)
+        owner = self.user_repository.get(owner_id)
         if not owner:
             raise ValueError(f"User with id {owner_id} not found")
 
@@ -108,13 +107,13 @@ class HBnBFacade:
 
             # Add amenities after place creation
             for amenity_id in amenities_ids:
-                amenity = self.amenity_repo.get(amenity_id)
+                amenity = self.amenity_repository.get(amenity_id)
                 if amenity:
                     place.add_amenity(amenity)
                 else:
                     logger.warning(f"Amenity {amenity_id} not found")
 
-            self.place_repo.add(place)
+            self.place_repository.add(place)
             logger.debug(f"Place added to repository with owner {owner.id}")
 
             return place
@@ -124,13 +123,13 @@ class HBnBFacade:
             raise ValueError(str(e))
 
     def get_place(self, place_id):
-        return self.place_repo.get(place_id)
+        return self.place_repository.get(place_id)
 
     def get_all_places(self):
-        return self.place_repo.get_all()
+        return self.place_repository.get_all()
 
     def update_place(self, place_id, place_data):
-        place = self.place_repo.get(place_id)
+        place = self.place_repository.get(place_id)
         if not place:
             return None
 
@@ -160,7 +159,7 @@ class HBnBFacade:
                 place.longitude = float(place_data['longitude'])
 
             if 'owner_id' in place_data:
-                owner = self.user_repo.get(place_data['owner_id'])
+                owner = self.user_repository.get(place_data['owner_id'])
                 if owner:
                     place.owner = owner
                 else:
@@ -169,7 +168,7 @@ class HBnBFacade:
             if 'amenities' in place_data:
                 place.amenities = []  # Reset amenities
                 for amenity_id in place_data['amenities']:
-                    amenity = self.amenity_repo.get(amenity_id)
+                    amenity = self.amenity_repository.get(amenity_id)
                     if amenity:
                         place.add_amenity(amenity)
 
@@ -195,34 +194,34 @@ class HBnBFacade:
             place=place,
             user=user
         )
-        self.review_repo.add(review)
+        self.review_repository.add(review)
         return review
 
     def get_review(self, review_id):
-        return self.review_repo.get(review_id)
+        return self.review_repository.get(review_id)
 
     def get_all_reviews(self):
-        return self.review_repo.get_all()
+        return self.review_repository.get_all()
 
     def get_reviews_by_place(self, place_id):
         place = self.get_place(place_id)
         if not place:
             raise ValueError("Place not found")
-        return [review for review in self.review_repo.get_all() if review.place.id == place_id]
+        return [review for review in self.review_repository.get_all() if review.place.id == place_id]
 
     def update_review(self, review_id, review_data):
-        review = self.review_repo.get(review_id)
+        review = self.review_repository.get(review_id)
         if review:
             if 'rating' in review_data and not (1 <= review_data['rating'] <= 5):
                 raise ValueError("Rating must be between 1 and 5")
-            self.review_repo.update(review_id, review_data)
+            self.review_repository.update(review_id, review_data)
             return review
         return None
 
     def delete_review(self, review_id):
-        review = self.review_repo.get(review_id)
+        review = self.review_repository.get(review_id)
         if review:
-            self.review_repo.delete(review_id)
+            self.review_repository.delete(review_id)
             return True
         return False
 
