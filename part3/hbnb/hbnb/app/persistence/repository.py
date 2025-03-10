@@ -1,5 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
+from app import db  # Add this import as shown in consigne
+from app.models import User, Place, Review, Amenity  # Add this import as shown in consigne
 
 logger = logging.getLogger(__name__)
 
@@ -77,3 +79,46 @@ class InMemoryRepository(Repository):
                 return obj
         logger.debug(f"No item found with {attr_name}={attr_value}")
         return None
+
+
+class SQLAlchemyRepository(Repository):
+    def __init__(self, model):
+        self.model = model
+
+    def add(self, obj):
+        logger.debug(f"Adding item with ID {obj.id} to repository")
+        db.session.add(obj)
+        db.session.commit()
+        return obj
+
+    def get(self, obj_id):
+        logger.debug(f"Fetching item with ID {obj_id}")
+        return self.model.query.get(obj_id)
+
+    def get_all(self):
+        return self.model.query.all()
+
+    def update(self, obj_id, data):
+        obj = self.get(obj_id)
+        if obj:
+            for key, value in data.items():
+                setattr(obj, key, value)
+            db.session.commit()
+            logger.debug(f"Updated item with ID {obj_id}")
+            return obj
+        logger.debug(f"Failed to update: no item with ID {obj_id}")
+        return None
+
+    def delete(self, obj_id):
+        obj = self.get(obj_id)
+        if obj:
+            db.session.delete(obj)
+            db.session.commit()
+            logger.debug(f"Deleted item with ID {obj_id}")
+            return True
+        logger.debug(f"Failed to delete: no item with ID {obj_id}")
+        return False
+
+    def get_by_attribute(self, attr_name, attr_value):
+        logger.debug(f"Searching for item with {attr_name}={attr_value}")
+        return self.model.query.filter(getattr(self.model, attr_name) == attr_value).first()

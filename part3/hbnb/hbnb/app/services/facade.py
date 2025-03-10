@@ -1,6 +1,5 @@
 import logging
-
-from app.persistence.repository import InMemoryRepository
+from app.persistence.repository import SQLAlchemyRepository
 from app.models.user import User
 from app.models.amenity import Amenity
 from app.models.place import Place
@@ -20,10 +19,11 @@ class HBnBFacade:
 
     def __init__(self):
         if not self._initialized:
-            self.user_repo = InMemoryRepository()
-            self.place_repo = InMemoryRepository()
-            self.amenity_repo = InMemoryRepository()
-            self.review_repo = InMemoryRepository()
+            # Switch to SQLAlchemyRepository for all repositories
+            self.user_repo = SQLAlchemyRepository(User)
+            self.place_repo = SQLAlchemyRepository(Place)
+            self.amenity_repo = SQLAlchemyRepository(Amenity)
+            self.review_repo = SQLAlchemyRepository(Review)
             self._initialized = True
 
     def create_user(self, user_data):
