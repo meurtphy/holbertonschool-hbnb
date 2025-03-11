@@ -1,9 +1,10 @@
 import logging
 from abc import ABC, abstractmethod
-from app import db  # Add this import as shown in consigne
-from app.models import User, Place, Review, Amenity  # Add this import as shown in consigne
+from flask_sqlalchemy import SQLAlchemy  # Add this import as shown in consigne
+
 
 logger = logging.getLogger(__name__)
+db = SQLAlchemy()
 
 class Repository(ABC):
     @abstractmethod
