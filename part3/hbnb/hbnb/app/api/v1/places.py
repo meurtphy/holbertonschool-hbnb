@@ -1,7 +1,7 @@
 import logging
 from flask_restx import Namespace, Resource, fields
 from app.api.v1 import facade  # Import the shared facade instance
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 logger = logging.getLogger(__name__)
 api = Namespace('places', description='Place operations')
@@ -102,8 +102,10 @@ class PlaceResource(Resource):
     @api.response(403, "Unauthorized action")
     @api.response(400, "Invalid input data")
     def put(self, place_id):
-        """Update a place's information"""
+        """Update a place's information (Admins can bypass ownership restrictions)"""
         current_user = get_jwt_identity()  # Get the authenticated user's identity
+        claims = get_jwt()  # Retrieve all JWT claims
+        is_admin = claims.get('is_admin', False)  # Check if user is admin
 
         try:
             # Retrieve the existing place
@@ -111,8 +113,8 @@ class PlaceResource(Resource):
             if not place:
                 return {'error': "Place not found"}, 404
             
-            # Check if the current user is the owner of the place
-            if str(place.owner.id) != current_user['id']:
+            # Ownership check: Admins can bypass this restriction
+            if not is_admin and str(place.owner.id) != current_user['id']:
                 return {'error': "Unauthorized action"}, 403
 
             update_data = api.payload
@@ -137,4 +139,35 @@ class PlaceResource(Resource):
             return {'error': str(e)}, 400
         except Exception as e:
             logger.error(f"Unexpected error while updating place: {str(e)}")
+            return {'error': "Internal server error"}, 500
+
+    @jwt_required()  # Require authentication to delete a place
+    @api.response(200, "Place deleted successfully")
+    @api.response(404, "Place not found")
+    @api.response(403, "Unauthorized action")
+    def delete(self, place_id):
+        """Delete a place (Admins can bypass ownership restrictions)"""
+        current_user = get_jwt_identity()  # Get the authenticated user's identity
+        claims = get_jwt()  # Retrieve all JWT claims
+        is_admin = claims.get('is_admin', False)  # Check if user is admin
+
+        try:
+            # Retrieve the existing place
+            place = facade.get_place(place_id)
+            if not place:
+                return {'error': "Place not found"}, 404
+            
+            # Ownership check: Admins can bypass this restriction
+            if not is_admin and str(place.owner.id) != current_user['id']:
+                return {'error': "Unauthorized action"}, 403
+
+            logger.debug(f"Deleting place {place_id}")
+
+            # Delete the place
+            facade.delete_place(place_id)
+            
+            return {'message': "Place deleted successfully"}, 200
+        
+        except Exception as e:
+            logger.error(f"Unexpected error while deleting a place: {str(e)}")
             return {'error': "Internal server error"}, 500

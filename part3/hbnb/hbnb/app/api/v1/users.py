@@ -1,5 +1,5 @@
 from flask_restx import Namespace, Resource, fields
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.api.v1 import facade  # Import the shared facade instance
 
 api = Namespace('users', description='User operations')
@@ -18,6 +18,13 @@ user_update_model = api.model('UserUpdate', {
     'last_name': fields.String(description='Last name of the user')
 })
 
+
+# Helper function to check admin privileges
+def is_admin_user():
+    claims = get_jwt()  # Retrieve the JWT claims
+    return claims.get('is_admin', False)
+
+
 @api.route('/')
 class UserList(Resource):
     @api.response(200, 'List of users retrieved successfully')
@@ -30,15 +37,19 @@ class UserList(Resource):
                  'email': user.email} for user in users], 200
 
     @api.expect(user_model, validate=True)
+    @jwt_required()  # Require authentication to create a new user
     @api.response(201, 'User successfully created')
     @api.response(400, 'Email already registered')
-    @api.response(400, 'Invalid input data')
+    @api.response(403, 'Admin privileges required')
     def post(self):
-        """Register a new user"""
+        """Register a new user (Admin only)"""
+        if not is_admin_user():
+            return {'error': 'Admin privileges required'}, 403
+
         from app import bcrypt  # Import différé pour éviter les imports circulaires
         user_data = api.payload
 
-        # Simulate email uniqueness check (to be replaced by real validation with persistence)
+        # Check if email is already in use
         existing_user = facade.get_user_by_email(user_data['email'])
         if existing_user:
             return {'error': 'Email already registered'}, 400
@@ -55,6 +66,7 @@ class UserList(Resource):
             return {'id': new_user.id, 'message': 'User successfully created'}, 201
         except ValueError as e:
             return {'error': str(e)}, 400
+
 
 @api.route('/<id>')
 class UserResource(Resource):
@@ -81,16 +93,17 @@ class UserResource(Resource):
     def put(self, id):
         """Update user details"""
         current_user = get_jwt_identity()  # Get the authenticated user's identity
+        is_admin = is_admin_user()
 
-        # Check if the authenticated user is trying to modify their own details
-        if str(current_user['id']) != id:
+        # Check if the authenticated user is trying to modify their own details or is an admin
+        if not is_admin and str(current_user['id']) != id:
             return {'error': "Unauthorized action"}, 403
 
         from app import bcrypt  # Import différé pour éviter les imports circulaires
         update_data = api.payload
 
-        # Prevent modification of email and password
-        if 'email' in update_data or 'password' in update_data:
+        # Prevent modification of email and password by regular users
+        if not is_admin and ('email' in update_data or 'password' in update_data):
             return {'error': "You cannot modify email or password"}, 400
 
         try:
@@ -104,5 +117,22 @@ class UserResource(Resource):
                     'first_name': updated_user.first_name,
                     'last_name': updated_user.last_name,
                     'email': updated_user.email}, 200
+        except ValueError as e:
+            return {'error': str(e)}, 400
+
+    @jwt_required()  # Require authentication to delete a user's account (Admin only)
+    @api.response(200, "User successfully deleted")
+    @api.response(403, "Admin privileges required")
+    def delete(self, id):
+        """Delete a user's account (Admin only)"""
+        if not is_admin_user():
+            return {'error': "Admin privileges required"}, 403
+
+        try:
+            deleted = facade.delete_user(id)
+            if not deleted:
+                return {'error': "User not found"}, 404
+
+            return {'message': "User successfully deleted"}, 200
         except ValueError as e:
             return {'error': str(e)}, 400
