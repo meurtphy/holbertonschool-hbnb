@@ -1,22 +1,31 @@
 from app import db  # Importez db depuis votre fichier d'initialisation
 from .base_model import BaseModel
+import uuid
+from sqlalchemy import Column, String, Boolean, Integer
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
 
 class User(BaseModel, db.Model):
     __tablename__ = 'users'
 
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
+    # UUID stocké comme chaîne (TEXT) pour compatibilité avec SQLite
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    first_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    password = Column(String(128), nullable=False)
+
+    # Modification : Utilisation d'Integer pour is_admin (SQLite ne supporte pas directement Boolean)
+    is_admin = Column(Integer, default=0)  # 0 pour False, 1 pour True
 
     def __init__(self, first_name, last_name, email, password, is_admin=False):
         super().__init__()
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
-        self.is_admin = is_admin
+        self.is_admin = int(is_admin)  # Conversion explicite en entier pour SQLite
         self.hash_password(password)  # Hache le mot de passe avant de le stocker
         self.validate()
 
