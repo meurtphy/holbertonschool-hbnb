@@ -17,10 +17,13 @@ def create_app(config_class="config.DevelopmentConfig"):
     
     # Load the configuration
     app.config.from_object(config_class)
+
+    app.config['JWT_SECRET_KEY'] = 'your-secret-key'
     
     # Initialize the database
     db.init_app(app)
     bcrypt.init_app(app)
+    jwt.init_app(app)
     with app.app_context():
         db.create_all()
     

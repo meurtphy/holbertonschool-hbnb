@@ -1,4 +1,5 @@
 from flask_restx import Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.api.v1 import facade  # Import the shared facade instance
 
 api = Namespace('users', description='User operations')
@@ -9,6 +10,12 @@ user_model = api.model('User', {
     'last_name': fields.String(required=True, description='Last name of the user'),
     'email': fields.String(required=True, description='Email of the user'),
     'password': fields.String(required=True, description='Password of the user')  # New field for password
+})
+
+# Add a model for updating user details (excluding email and password)
+user_update_model = api.model('UserUpdate', {
+    'first_name': fields.String(description='First name of the user'),
+    'last_name': fields.String(description='Last name of the user')
 })
 
 @api.route('/')
@@ -65,29 +72,37 @@ class UserResource(Resource):
                 'last_name': user.last_name,
                 'email': user.email}, 200
 
-    @api.expect(user_model, validate=True)
+    @jwt_required()  # Require authentication to update a user's details
+    @api.expect(user_update_model, validate=True)
     @api.response(200, 'User successfully updated')
     @api.response(404, 'User not found')
-    @api.response(400, 'Invalid input data')
+    @api.response(400, "You cannot modify email or password")
+    @api.response(403, "Unauthorized action")
     def put(self, id):
         """Update user details"""
-        from app import bcrypt  # Import différé pour éviter les imports circulaires
-        user_data = api.payload
-        try:
-            # Hash the password before updating it (if provided)
-            if 'password' in user_data:
-                hashed_password = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
-                user_data['password'] = hashed_password
+        current_user = get_jwt_identity()  # Get the authenticated user's identity
 
+        # Check if the authenticated user is trying to modify their own details
+        if str(current_user['id']) != id:
+            return {'error': "Unauthorized action"}, 403
+
+        from app import bcrypt  # Import différé pour éviter les imports circulaires
+        update_data = api.payload
+
+        # Prevent modification of email and password
+        if 'email' in update_data or 'password' in update_data:
+            return {'error': "You cannot modify email or password"}, 400
+
+        try:
             # Update the user's details
-            user = facade.update_user(id, user_data)
-            if not user:
-                return {'error': 'User not found'}, 404
+            updated_user = facade.update_user(id, update_data)
+            if not updated_user:
+                return {'error': "User not found"}, 404
 
             # Exclude the password from the response
-            return {'id': user.id,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'email': user.email}, 200
+            return {'id': updated_user.id,
+                    'first_name': updated_user.first_name,
+                    'last_name': updated_user.last_name,
+                    'email': updated_user.email}, 200
         except ValueError as e:
             return {'error': str(e)}, 400

@@ -1,6 +1,7 @@
 import logging
 from flask_restx import Namespace, Resource, fields
 from app.api.v1 import facade  # Import the shared facade instance
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 logger = logging.getLogger(__name__)
 api = Namespace('places', description='Place operations')
@@ -29,14 +30,19 @@ place_update_model = api.model('PlaceUpdate', {
 
 @api.route('/')
 class PlaceList(Resource):
+    @jwt_required()  # Require authentication to create a new place
     @api.expect(place_model)
     @api.response(201, 'Place successfully created')
     @api.response(400, 'Invalid input data')
     def post(self):
         """Register a new place"""
+        current_user = get_jwt_identity()  # Get the authenticated user's identity
         place_data = api.payload
 
         try:
+            # Set the owner_id to the authenticated user's ID
+            place_data['owner_id'] = current_user['id']
+
             # Create place using the facade
             new_place = facade.create_place(place_data)
 
@@ -89,25 +95,32 @@ class PlaceResource(Resource):
             'amenities': [amenity.id for amenity in place.amenities]
         }, 200
 
+    @jwt_required()  # Require authentication to update a place
     @api.expect(place_update_model)
     @api.response(200, 'Place updated successfully')
     @api.response(404, 'Place not found')
-    @api.response(400, 'Invalid input data')
+    @api.response(403, "Unauthorized action")
+    @api.response(400, "Invalid input data")
     def put(self, place_id):
         """Update a place's information"""
+        current_user = get_jwt_identity()  # Get the authenticated user's identity
+
         try:
+            # Retrieve the existing place
             place = facade.get_place(place_id)
             if not place:
-                return {'error': 'Place not found'}, 404
+                return {'error': "Place not found"}, 404
+            
+            # Check if the current user is the owner of the place
+            if str(place.owner.id) != current_user['id']:
+                return {'error': "Unauthorized action"}, 403
 
             update_data = api.payload
             logger.debug(f"Updating place {place_id} with data: {update_data}")
 
             # Update the place
             updated_place = facade.update_place(place_id, update_data)
-            if not updated_place:
-                return {'error': 'Failed to update place'}, 400
-
+            
             return {
                 'id': updated_place.id,
                 'title': updated_place.title,
@@ -124,4 +137,4 @@ class PlaceResource(Resource):
             return {'error': str(e)}, 400
         except Exception as e:
             logger.error(f"Unexpected error while updating place: {str(e)}")
-            return {'error': 'Internal server error'}, 500
+            return {'error': "Internal server error"}, 500
