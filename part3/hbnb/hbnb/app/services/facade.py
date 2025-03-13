@@ -1,4 +1,5 @@
 import logging
+from app.persistence.user_repository import UserRepository
 from app.persistence.repository import SQLAlchemyRepository
 from app.models.user import User
 from app.models.amenity import Amenity
@@ -19,8 +20,8 @@ class HBnBFacade:
 
     def __init__(self):
         if not self._initialized:
-            # Switch to SQLAlchemyRepository for all repositories
-            self.user_repo = SQLAlchemyRepository(User)
+            # Use UserRepository for User and SQLAlchemyRepository for others
+            self.user_repo = UserRepository()
             self.place_repo = SQLAlchemyRepository(Place)
             self.amenity_repo = SQLAlchemyRepository(Amenity)
             self.review_repo = SQLAlchemyRepository(Review)
@@ -28,15 +29,17 @@ class HBnBFacade:
 
     def create_user(self, user_data):
         logger.debug(f"Creating user with data: {user_data}")
-        user = User(**user_data)
-        user.validate()  # Appel de la méthode de validation
-        self.user_repo.add(user)
-        logger.debug(f"User created with ID: {user.id}")
-        return user
+        try:
+            user = self.user_repo.create(**user_data)
+            logger.debug(f"User created with ID: {user.id}")
+            return user
+        except ValueError as e:
+            logger.error(f"Error creating user: {e}")
+            raise
 
     def get_user(self, user_id):
         logger.debug(f"Looking for user with ID: {user_id}")
-        user = self.user_repo.get(user_id)
+        user = self.user_repo.get_by_id(user_id)
         if user:
             logger.debug(f"Found user: {user.first_name} {user.last_name}")
         else:
@@ -44,7 +47,13 @@ class HBnBFacade:
         return user
 
     def get_user_by_email(self, email):
-        return self.user_repo.get_by_attribute('email', email)
+        logger.debug(f"Looking for user with email: {email}")
+        user = self.user_repo.get_by_email(email)
+        if user:
+            logger.debug(f"Found user: {user.first_name} {user.last_name}")
+        else:
+            logger.debug("User not found")
+        return user
 
     def get_all_users(self):
         """Retrieve all users from the repository"""
@@ -52,12 +61,12 @@ class HBnBFacade:
 
     def update_user(self, user_id, user_data):
         """Update user with new data"""
-        user = self.get_user(user_id)
-        if user:
-            self.user_repo.update(user_id, user_data)
+        try:
+            user = self.user_repo.update(user_id, user_data)
             return user
-        return None
-
+        except ValueError as e:
+            logger.error(f"Error updating user: {e}")
+            raise
 
     def create_amenity(self, amenity_data):
         """Create a new amenity"""
@@ -95,7 +104,7 @@ class HBnBFacade:
         if not owner_id:
             raise ValueError("owner_id is required")
 
-        owner = self.user_repo.get(owner_id)
+        owner = self.get_user(owner_id)
         if not owner:
             raise ValueError(f"User with id {owner_id} not found")
 
@@ -164,7 +173,7 @@ class HBnBFacade:
                 if owner:
                     place.owner = owner
                 else:
-                    raise ValueError(f"Owner with id {place_data['owner_id']} not found")
+                    raise ValueError(f"User with id {place_data['owner_id']} not found")
 
             if 'amenities' in place_data:
                 place.amenities = []  # Reset amenities

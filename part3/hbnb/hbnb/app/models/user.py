@@ -1,43 +1,46 @@
-from app import db  # Importez db depuis votre fichier d'initialisation
+# app/models/user.py
+from app import db, bcrypt  # Import unique et centralisé
 from .base_model import BaseModel
-import uuid
-from sqlalchemy import Column, String, Boolean, Integer
-from sqlalchemy.ext.declarative import declarative_base
+import re
+from sqlalchemy import Column, String, Boolean
+from sqlalchemy.orm import validates
 
-Base = declarative_base()
-
-
-class User(BaseModel, db.Model):
+class User(BaseModel):
     __tablename__ = 'users'
 
-    # UUID stocké comme chaîne (TEXT) pour compatibilité avec SQLite
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password = Column(String(128), nullable=False)
+    is_admin = Column(Boolean, default=False)
 
-    # Modification : Utilisation d'Integer pour is_admin (SQLite ne supporte pas directement Boolean)
-    is_admin = Column(Integer, default=0)  # 0 pour False, 1 pour True
-
-    def __init__(self, first_name, last_name, email, password, is_admin=False):
-        super().__init__()
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.is_admin = int(is_admin)  # Conversion explicite en entier pour SQLite
-        self.hash_password(password)  # Hache le mot de passe avant de le stocker
+    def __init__(self, *args, **kwargs):
+        """Constructeur hybride"""
+        super().__init__(*args, **kwargs)
+        if 'password' in kwargs:
+            self.hash_password(kwargs['password'])
         self.validate()
 
+    @validates('email')
+    def validate_email(self, key, email):
+        if not re.match(r'^[\w\.-]+@[\w-]+\.[\w]{2,3}$', email):
+            raise ValueError("Email invalide")
+        return email
+
     def hash_password(self, password):
-        from app import bcrypt  # Import différé pour éviter les imports circulaires
+        """Votre méthode gardée avec amélioration"""
+        if not password.strip():
+            raise ValueError("Mot de passe vide")
         self.password = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def verify_password(self, password):
-        from app import bcrypt  # Import différé pour éviter les imports circulaires
+        """Vérification conservée avec contrôle de nullité"""
+        if not self.password:
+            return False
         return bcrypt.check_password_hash(self.password, password)
 
     def validate(self):
+        """Méthode de validation manuelle conservée"""
         if not self.first_name or len(self.first_name) > 50:
             raise ValueError("First name must be between 1 and 50 characters")
         if not self.last_name or len(self.last_name) > 50:
@@ -47,6 +50,9 @@ class User(BaseModel, db.Model):
 
     @staticmethod
     def is_valid_email(email):
-        import re
+        """Méthode statique conservée"""
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         return re.match(email_regex, email) is not None
+
+    def __repr__(self):
+        return f"<User {self.email}>"
