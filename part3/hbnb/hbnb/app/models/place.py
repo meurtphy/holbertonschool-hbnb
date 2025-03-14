@@ -2,18 +2,18 @@
 
 from app import db
 from .base_model import BaseModel
-from .user import User  # On ne définit pas de relation, mais on conserve l'import
-from sqlalchemy import Column, Integer, String, Float
+from .user import User
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy.orm import relationship
 
 class Place(BaseModel, db.Model):
     """
-    Mapping de l'entité Place en SQLAlchemy, SANS relation.
-    On conserve le code existant (owner, reviews, amenities)
-    mais sans créer de clé étrangère ni table d'association.
+    Modèle Place en SQLAlchemy avec la relation One-to-Many avec User,
+    et (nouvelle) relation One-to-Many avec Review (sans supprimer l'existant).
     """
     __tablename__ = 'places'
 
-    # Colonnes exigées par la consigne (id, title, description, price, latitude, longitude)
+    # Colonnes imposées
     id = Column(Integer, primary_key=True)
     title = Column(String(100), nullable=False)
     description = Column(String, nullable=True)
@@ -21,33 +21,42 @@ class Place(BaseModel, db.Model):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
 
-    # Le code contient owner_id : on en fait une simple colonne, SANS relation SQL
-    owner_id = Column(String, nullable=True)
+    # Lien avec User
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user = relationship('User', back_populates='places', lazy=True)
+
+    # Relation ORM explicite (nouvelle) avec Review
+    # On NE supprime pas self.reviews (liste Python), donc on utilise un autre nom "reviews_orm"
+    reviews_orm = relationship('Review', back_populates='place_orm', lazy=True)
 
     def __init__(self, title, description, price, latitude, longitude, owner_id=None, owner=None):
-        super().__init__()  # Appel du constructeur BaseModel
+        super().__init__()
         self.title = title
         self.description = description
         self.price = price
         self.latitude = latitude
         self.longitude = longitude
 
-        # On conserve le mécanisme owner / owner_id
+        # On conserve le mécanisme existant
         self._owner = None
         self.owner_id = owner_id
         if owner:
             self._owner = owner
             self.owner_id = owner.id
+            self.user = owner  # Synchronise la relation ORM
 
         # On conserve les listes 'reviews' et 'amenities'
         self.reviews = []
         self.amenities = []
 
-        # Validation interne
         self.validate_attributes()
 
     @property
     def owner(self):
+        """
+        Propriété existante, on la garde.
+        On ne supprime rien comme demandé.
+        """
         return self._owner
 
     @owner.setter
@@ -56,6 +65,7 @@ class Place(BaseModel, db.Model):
             raise ValueError("Owner must be an instance of User")
         self._owner = value
         self.owner_id = value.id
+        self.user = value  # Synchronisation avec la relation ORM
 
     def validate_attributes(self):
         if not isinstance(self.title, str) or not self.title.strip():
@@ -70,11 +80,14 @@ class Place(BaseModel, db.Model):
             raise ValueError("Longitude must be a number between -180 and 180")
 
     def add_review(self, review):
-        """Add a review to the place (non relié à la BDD)."""
+        """
+        On conserve la logique existante, non reliée à la BDD.
+        (reviews_orm est la relation ORM, reviews est la liste Python).
+        """
         self.reviews.append(review)
 
     def add_amenity(self, amenity):
-        """Add an amenity to the place (non relié à la BDD)."""
+        """On conserve la logique existante, non reliée à la BDD."""
         self.amenities.append(amenity)
 
     def __repr__(self):

@@ -2,42 +2,47 @@
 
 from app import db
 from .base_model import BaseModel
-from .place import Place  # On ne crée pas de relation DB, on garde juste l'import
-from .user import User    # Idem, pas de relation
-from sqlalchemy import Column, Integer, String
+from .place import Place   # On conserve, sans supprimer
+from .user import User     # On conserve, sans supprimer
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 
 class Review(BaseModel, db.Model):
     """
-    Mapping de l'entité Review en SQLAlchemy, sans relation.
-    On conserve la logique Python existante (place, user),
-    mais sans clé étrangère et sans association.
+    Modèle Review en SQLAlchemy,
+    ajout de la relation One-to-Many avec Place (place_id -> places.id).
+    On ne supprime rien d'existant (place/user, _place/_user, etc.).
     """
     __tablename__ = 'reviews'
 
-    # Colonnes imposées : id (int), text (string), rating (int).
     id = Column(Integer, primary_key=True)
     text = Column(String, nullable=False)
     rating = Column(Integer, nullable=False)
 
-    # On stocke place_id / user_id en simple champ, sans relation.
-    place_id = Column(Integer, nullable=True)
-    user_id = Column(Integer, nullable=True)
+    # Conserve place_id / user_id mais on ajoute la ForeignKey pour place_id
+    place_id = Column(Integer, ForeignKey('places.id'), nullable=True)
+    user_id = Column(Integer, nullable=True)  # On laisse tel quel (étape suivante pour User)
+
+    # Relation SQLAlchemy avec Place
+    # NOTE : pour éviter le conflit avec la propriété `place` existante,
+    # nous appelons cette relation `sql_place`.
+    sql_place = relationship("Place", back_populates="reviews", lazy=True)
 
     def __init__(self, text, rating, place=None, user=None):
         super().__init__()
         self.text = text
         self.rating = rating
 
-        # Références Python internes (pas de relation DB)
         self._place = None
         self._user = None
 
-        # Si on fournit un place
+        # Si on fournit un place, on synchronise la partie Python + place_id
         if place:
             self._place = place
             self.place_id = getattr(place, "id", None)
+            self.sql_place = place  # On renseigne aussi la relation ORM
 
-        # Si on fournit un user
+        # Si on fournit un user, on ne touche pas encore au code ici (étape suivante)
         if user:
             self._user = user
             self.user_id = getattr(user, "id", None)
@@ -56,7 +61,7 @@ class Review(BaseModel, db.Model):
 
     @property
     def place(self):
-        """Accès au place en Python, non relié en base."""
+        """Accès Python non relié à la BDD, on ne touche pas."""
         return self._place
 
     @place.setter
@@ -65,10 +70,11 @@ class Review(BaseModel, db.Model):
             raise ValueError("place must be a Place instance")
         self._place = value
         self.place_id = getattr(value, "id", None)
+        self.sql_place = value  # Synchronisation avec la relation ORM
 
     @property
     def user(self):
-        """Accès au user en Python, non relié en base."""
+        """Accès Python non relié à la BDD, on ne touche pas (étape suivante)."""
         return self._user
 
     @user.setter
@@ -77,6 +83,7 @@ class Review(BaseModel, db.Model):
             raise ValueError("user must be a User instance")
         self._user = value
         self.user_id = getattr(value, "id", None)
+        # La relation avec User sera ajoutée à l'étape suivante
 
     def __repr__(self):
         return f"<Review id={self.id} rating={self.rating}>"
