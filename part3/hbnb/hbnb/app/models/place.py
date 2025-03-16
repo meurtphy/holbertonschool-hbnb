@@ -1,19 +1,19 @@
-# app/models/place.py
-
 from app import db
 from .base_model import BaseModel
-from .user import User
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Table
 from sqlalchemy.orm import relationship
 
+# Table d'association pour la relation many-to-many entre Place et Amenity
+place_amenity_association = Table(
+    'place_amenity_association',
+    db.metadata,
+    Column('place_id', Integer, ForeignKey('places.id'), primary_key=True),
+    Column('amenity_id', Integer, ForeignKey('amenities.id'), primary_key=True)
+)
+
 class Place(BaseModel, db.Model):
-    """
-    Modèle Place en SQLAlchemy avec la relation One-to-Many avec User,
-    et (nouvelle) relation One-to-Many avec Review (sans supprimer l'existant).
-    """
     __tablename__ = 'places'
 
-    # Colonnes imposées
     id = Column(Integer, primary_key=True)
     title = Column(String(100), nullable=False)
     description = Column(String, nullable=True)
@@ -21,13 +21,11 @@ class Place(BaseModel, db.Model):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
 
-    # Lien avec User
-    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
-    user = relationship('User', back_populates='places', lazy=True)
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    owner = relationship('User', back_populates='places', lazy=True)
 
-    # Relation ORM explicite (nouvelle) avec Review
-    # On NE supprime pas self.reviews (liste Python), donc on utilise un autre nom "reviews_orm"
-    reviews_orm = relationship('Review', back_populates='place_orm', lazy=True)
+    reviews = relationship('Review', back_populates='place', lazy=True)
+    amenities = relationship('Amenity', secondary=place_amenity_association, back_populates='places', lazy=True)
 
     def __init__(self, title, description, price, latitude, longitude, owner_id=None, owner=None):
         super().__init__()
@@ -37,35 +35,15 @@ class Place(BaseModel, db.Model):
         self.latitude = latitude
         self.longitude = longitude
 
-        # On conserve le mécanisme existant
-        self._owner = None
         self.owner_id = owner_id
         if owner:
-            self._owner = owner
+            self.owner = owner
             self.owner_id = owner.id
-            self.user = owner  # Synchronise la relation ORM
 
-        # On conserve les listes 'reviews' et 'amenities'
         self.reviews = []
         self.amenities = []
 
         self.validate_attributes()
-
-    @property
-    def owner(self):
-        """
-        Propriété existante, on la garde.
-        On ne supprime rien comme demandé.
-        """
-        return self._owner
-
-    @owner.setter
-    def owner(self, value):
-        if not isinstance(value, User):
-            raise ValueError("Owner must be an instance of User")
-        self._owner = value
-        self.owner_id = value.id
-        self.user = value  # Synchronisation avec la relation ORM
 
     def validate_attributes(self):
         if not isinstance(self.title, str) or not self.title.strip():
@@ -77,18 +55,13 @@ class Place(BaseModel, db.Model):
         if not isinstance(self.latitude, (int, float)) or not (-90 <= self.latitude <= 90):
             raise ValueError("Latitude must be a number between -90 and 90")
         if not isinstance(self.longitude, (int, float)) or not (-180 <= self.longitude <= 180):
-            raise ValueError("Longitude must be a number between -180 and 180")
+            raise ValueError("Longitude must be a number between -180 et 180")
 
     def add_review(self, review):
-        """
-        On conserve la logique existante, non reliée à la BDD.
-        (reviews_orm est la relation ORM, reviews est la liste Python).
-        """
         self.reviews.append(review)
 
     def add_amenity(self, amenity):
-        """On conserve la logique existante, non reliée à la BDD."""
         self.amenities.append(amenity)
 
     def __repr__(self):
-        return f"<Place title='{self.title}' price={self.price}>"
+        return f"<Place id={self.id} title={self.title}>"

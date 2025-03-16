@@ -3,17 +3,20 @@
 from app import db
 from .base_model import BaseModel
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+from .place import place_amenity_association  # ✅ Ajout de l'import
 
 class Amenity(BaseModel, db.Model):
     """
-    Modèle Amenity mappé en SQLAlchemy, sans relations.
-    On conserve la logique Python existante (validate).
+    Modèle Amenity en SQLAlchemy, lié à Place par une relation Many-to-Many.
     """
     __tablename__ = 'amenities'
 
-    # Colonnes imposées : id (int), name (string)
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
+
+    # ✅ Relation Many-to-Many avec Place
+    places = relationship('Place', secondary=place_amenity_association, back_populates='amenities', lazy=True)
 
     def __init__(self, name):
         super().__init__()
